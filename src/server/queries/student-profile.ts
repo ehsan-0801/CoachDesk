@@ -107,6 +107,12 @@ export async function getStudentProfile(id: number) {
             id: true,
             name: true,
             studentUid: true,
+            batch: {
+              select: {
+                name: true,
+                batchNumber: true,
+              },
+            },
             examResults: {
               where: {
                 status: "published",

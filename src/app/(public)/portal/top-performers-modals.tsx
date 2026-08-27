@@ -21,7 +21,7 @@ type Props = {
   topPerformersAllBatches: TopPerformer[];
   topPerformersBatch: TopPerformer[];
   currentStudentId: number;
-  locale: string;
+  locale: "bn" | "en";
 };
 
 export function TopPerformersModals({
@@ -95,9 +95,9 @@ export function TopPerformersModals({
                 <THead>
                   <TR>
                     <TH>{t.portal.rank}</TH>
-                    <TH>{t.students.name}</TH>
+                    <TH>{t.students.studentName}</TH>
                     <TH>{t.students.studentId}</TH>
-                    <TH>{t.batches.batch}</TH>
+                    <TH>{t.batches.title}</TH>
                     <TH className="text-right">{t.portal.exams}</TH>
                     <TH className="text-right">{t.portal.totalMarks}</TH>
                   </TR>
@@ -148,7 +148,7 @@ export function TopPerformersModals({
                 <THead>
                   <TR>
                     <TH>{t.portal.rank}</TH>
-                    <TH>{t.students.name}</TH>
+                    <TH>{t.students.studentName}</TH>
                     <TH>{t.students.studentId}</TH>
                     <TH className="text-right">{t.portal.exams}</TH>
                     <TH className="text-right">{t.portal.totalMarks}</TH>
