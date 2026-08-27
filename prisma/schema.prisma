@@ -1,0 +1,607 @@
+// ═══════════════════════════════════════════════════════════════════════════
+//  CoachDesk — data model
+//
+//  Conventions:
+//   • camelCase in TypeScript, snake_case in PostgreSQL (via @map / @@map)
+//   • every table carries created_at / updated_at unless it is a pure join
+//   • enums replace the legacy free-text status columns
+// ═══════════════════════════════════════════════════════════════════════════
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+// Connection URLs live in `prisma.config.ts` (Prisma 7); the runtime client is
+// handed a pg driver adapter in `src/server/db.ts`.
+datasource db {
+  provider = "postgresql"
+}
+
+// ─── Enums ──────────────────────────────────────────────────────────────────
+
+enum UserRole {
+  admin
+  manager
+  staff
+
+  @@map("user_role")
+}
+
+/// Every screen belongs to exactly one module. RBAC is granted per module, so
+/// the sidebar, the route guard and the API guard all read the same list.
+enum AppModule {
+  dashboard
+  batches
+  students
+  attendance
+  exams
+  notes
+  payments
+  expenses
+  colleges
+  homepage
+  sms
+  users
+
+  @@map("app_module")
+}
+
+enum Gender {
+  male
+  female
+  other
+
+  @@map("gender")
+}
+
+enum AttendanceStatus {
+  present
+  absent
+
+  @@map("attendance_status")
+}
+
+enum AttendanceSource {
+  regular
+  manual
+
+  @@map("attendance_source")
+}
+
+enum PaymentMethod {
+  cash
+  bkash
+  nagad
+  rocket
+  bank
+  other
+
+  @@map("payment_method")
+}
+
+enum ExamResultStatus {
+  published
+  absent
+  draft
+
+  @@map("exam_result_status")
+}
+
+enum ExamBatchStatus {
+  active
+  completed
+  cancelled
+
+  @@map("exam_batch_status")
+}
+
+enum SmsCategory {
+  present
+  absent
+  manual_attendance
+  result
+  exam_absent
+  payment_confirmation
+  due_payment
+  admission_confirmation
+  batchwise
+
+  @@map("sms_category")
+}
+
+enum SmsRecipient {
+  student
+  parent
+  test
+
+  @@map("sms_recipient")
+}
+
+/// `skipped` is what the pipeline records while SMS is switched off — the row
+/// still documents what would have been sent, which is what makes the pipeline
+/// testable without a provider.
+enum SmsStatus {
+  pending
+  queued
+  sent
+  failed
+  skipped
+
+  @@map("sms_status")
+}
+
+// ─── Identity & access ──────────────────────────────────────────────────────
+
+model User {
+  id           Int       @id @default(autoincrement())
+  name         String    @db.VarChar(120)
+  email        String    @unique @db.VarChar(190)
+  passwordHash String    @map("password_hash")
+  role         UserRole  @default(staff)
+  phone        String?   @db.VarChar(20)
+  isActive     Boolean   @default(true) @map("is_active")
+  lastLoginAt  DateTime? @map("last_login_at") @db.Timestamptz(3)
+  createdAt    DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt    DateTime  @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  permissions        UserPermission[]
+  sessions           Session[]
+  studentsCreated    Student[]           @relation("StudentCreatedBy")
+  attendancesTaken   Attendance[]
+  classesRecorded    ClassHeld[]
+  paymentsRecorded   Payment[]
+  expensesRecorded   Expense[]
+  notesCreated       Note[]
+  noteDistributions  NoteDistribution[]
+  examResults        ExamResult[]
+  announcements      Announcement[]
+  smsTemplates       SmsTemplate[]
+  smsMessages        SmsMessage[]
+  appSettings        AppSetting[]
+
+  @@index([role])
+  @@map("users")
+}
+
+/// One row per (user, module). No row means no access at all, so a freshly
+/// created user starts locked down rather than open.
+model UserPermission {
+  id        Int       @id @default(autoincrement())
+  userId    Int       @map("user_id")
+  module    AppModule
+  canView   Boolean   @default(false) @map("can_view")
+  canCreate Boolean   @default(false) @map("can_create")
+  canUpdate Boolean   @default(false) @map("can_update")
+  canDelete Boolean   @default(false) @map("can_delete")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, module])
+  @@map("user_permissions")
+}
+
+/// Stored so a login can be revoked server-side; the cookie carries only a
+/// signed reference to the row.
+model Session {
+  id        String   @id @db.VarChar(64)
+  userId    Int      @map("user_id")
+  userAgent String?  @map("user_agent")
+  ipAddress String?  @map("ip_address") @db.VarChar(64)
+  expiresAt DateTime @map("expires_at") @db.Timestamptz(3)
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("sessions")
+}
+
+// ─── Academic structure ─────────────────────────────────────────────────────
+
+model College {
+  id        Int      @id @default(autoincrement())
+  name      String   @unique @db.VarChar(200)
+  shortName String?  @map("short_name") @db.VarChar(60)
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  students Student[]
+
+  @@map("colleges")
+}
+
+model Batch {
+  id          Int      @id @default(autoincrement())
+  batchNumber Int      @unique @map("batch_number")
+  name        String?  @db.VarChar(120)
+  hscYear     String   @map("hsc_year") @db.VarChar(8)
+  /// Weekday keys, stored as a real array instead of the legacy CSV string.
+  daysInWeek  String[] @map("days_in_week")
+  startTime   String   @map("start_time") @db.VarChar(8)
+  endTime     String   @map("end_time") @db.VarChar(8)
+  startingDate DateTime @map("starting_date") @db.Date
+  duration    String?  @db.VarChar(60)
+  tuitionFee  Int      @default(0) @map("tuition_fee")
+  admissionFee Int     @default(0) @map("admission_fee")
+  archived    Boolean  @default(false)
+
+  /// Public homepage copy — two free-text lines with their own colours.
+  infoLine1      String? @map("info_line1")
+  infoLine2      String? @map("info_line2")
+  hscYearColor   String? @map("hsc_year_color") @db.VarChar(32)
+  infoLine1Color String? @map("info_line1_color") @db.VarChar(32)
+  infoLine2Color String? @map("info_line2_color") @db.VarChar(32)
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  students    Student[]
+  classesHeld ClassHeld[]
+  attendances Attendance[]
+  payments    Payment[]
+  examBatches ExamBatch[]
+  examResults ExamResult[]
+  smsMessages SmsMessage[]
+
+  @@index([archived])
+  @@index([hscYear])
+  @@map("batches")
+}
+
+model Student {
+  id Int @id @default(autoincrement())
+  /// Human-facing roll shown everywhere in the UI, e.g. "26001".
+  studentUid String? @unique @map("student_uid") @db.VarChar(32)
+  name        String  @db.VarChar(160)
+  phone       String? @db.VarChar(20)
+  parentName  String? @map("parent_name") @db.VarChar(160)
+  parentPhone String? @map("parent_phone") @db.VarChar(20)
+
+  collegeId   Int?    @map("college_id")
+  collegeRoll String? @map("college_roll") @db.VarChar(40)
+  hscYear     String  @map("hsc_year") @db.VarChar(8)
+  gender      Gender?
+  division    String? @db.VarChar(60)
+  courseType  String? @map("course_type") @db.VarChar(80)
+  courseChapters Json? @map("course_chapters")
+
+  admissionDate DateTime @map("admission_date") @db.Date
+  admissionFee  Decimal  @default(0) @map("admission_fee") @db.Decimal(10, 2)
+  monthlyFee    Decimal  @default(0) @map("monthly_fee") @db.Decimal(10, 2)
+  modelTestFee  Decimal? @map("model_test_fee") @db.Decimal(10, 2)
+
+  batchId  Int?    @map("batch_id")
+  archived Boolean @default(false)
+  /// Model-test students pay a one-off fee instead of a monthly one.
+  isModelTest Boolean @default(false) @map("is_model_test")
+  /// Set once a name has been normalised through the name-change screen.
+  isNameVerified Boolean @default(false) @map("is_name_verified")
+  comment   String?
+  createdById Int?     @map("created_by")
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  college   College? @relation(fields: [collegeId], references: [id], onDelete: SetNull)
+  batch     Batch?   @relation(fields: [batchId], references: [id], onDelete: SetNull)
+  createdBy User?    @relation("StudentCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
+
+  attendances       Attendance[]
+  payments          Payment[]
+  examResults       ExamResult[]
+  noteDistributions NoteDistribution[]
+  smsMessages       SmsMessage[]
+
+  @@index([batchId])
+  @@index([archived])
+  @@index([hscYear])
+  @@index([name])
+  @@map("students")
+}
+
+// ─── Attendance ─────────────────────────────────────────────────────────────
+
+/// A class that actually took place. Attendance rates are computed against
+/// these rows, never against the calendar.
+model ClassHeld {
+  id           Int      @id @default(autoincrement())
+  batchId      Int      @map("batch_id")
+  classDate    DateTime @map("class_date") @db.Date
+  recordedById Int?     @map("recorded_by")
+  createdAt    DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  batch      Batch @relation(fields: [batchId], references: [id], onDelete: Cascade)
+  recordedBy User? @relation(fields: [recordedById], references: [id], onDelete: SetNull)
+
+  @@unique([batchId, classDate])
+  @@map("classes_held")
+}
+
+model Attendance {
+  id        Int @id @default(autoincrement())
+  studentId Int @map("student_id")
+  /// Denormalised so a student's history survives a batch transfer.
+  batchId   Int? @map("batch_id")
+
+  attendanceDate DateTime         @map("attendance_date") @db.Date
+  status         AttendanceStatus
+  source         AttendanceSource @default(regular)
+  remarks        String?
+  recordedById   Int?             @map("recorded_by")
+  createdAt      DateTime         @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt      DateTime         @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  student    Student @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  batch      Batch?  @relation(fields: [batchId], references: [id], onDelete: SetNull)
+  recordedBy User?   @relation(fields: [recordedById], references: [id], onDelete: SetNull)
+
+  @@unique([studentId, attendanceDate])
+  @@index([attendanceDate])
+  @@index([batchId, attendanceDate])
+  @@map("attendances")
+}
+
+// ─── Finance ────────────────────────────────────────────────────────────────
+
+model FeeType {
+  id     Int     @id @default(autoincrement())
+  name   String  @unique @db.VarChar(120)
+  amount Decimal @default(0) @db.Decimal(10, 2)
+  /// Marks the fee model-test students pay; used to route reports.
+  isModelTest Boolean @default(false) @map("is_model_test")
+  isActive    Boolean @default(true) @map("is_active")
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt   DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  payments Payment[]
+
+  @@map("fee_types")
+}
+
+/// The legacy schema kept model-test money in a second, near-identical table.
+/// One table with `isModelTest` removes every duplicated query in reporting.
+model Payment {
+  id        Int  @id @default(autoincrement())
+  studentId Int  @map("student_id")
+  batchId   Int? @map("batch_id")
+  feeTypeId Int? @map("fee_type_id")
+
+  /// Denormalised label so reports stay readable if a fee type is renamed.
+  paymentType String        @map("payment_type") @db.VarChar(120)
+  amount      Decimal       @db.Decimal(10, 2)
+  paymentDate DateTime      @map("payment_date") @db.Date
+  /// The month this payment settles — not the month it was taken in.
+  paymentMonth Int?         @map("payment_month")
+  paymentYear  Int?         @map("payment_year")
+  method       PaymentMethod @default(cash)
+  isModelTest  Boolean      @default(false) @map("is_model_test")
+  note         String?
+  recordedById Int?         @map("recorded_by")
+  createdAt    DateTime     @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt    DateTime     @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  student    Student  @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  batch      Batch?   @relation(fields: [batchId], references: [id], onDelete: SetNull)
+  feeType    FeeType? @relation(fields: [feeTypeId], references: [id], onDelete: SetNull)
+  recordedBy User?    @relation(fields: [recordedById], references: [id], onDelete: SetNull)
+
+  @@index([studentId])
+  @@index([paymentDate])
+  @@index([studentId, paymentYear, paymentMonth])
+  @@map("payments")
+}
+
+model ExpenseType {
+  id        Int      @id @default(autoincrement())
+  name      String   @unique @db.VarChar(120)
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  expenses Expense[]
+
+  @@map("expense_types")
+}
+
+model Note {
+  id   Int    @id @default(autoincrement())
+  name String @db.VarChar(200)
+  /// Copies in stock; printing adds, distribution subtracts.
+  quantity    Int      @default(0)
+  createdById Int?     @map("created_by")
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt   DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  createdBy     User?              @relation(fields: [createdById], references: [id], onDelete: SetNull)
+  distributions NoteDistribution[]
+  expenses      Expense[]
+
+  @@map("notes")
+}
+
+model Expense {
+  id            Int @id @default(autoincrement())
+  expenseTypeId Int @map("expense_type_id")
+
+  /// Money spent.
+  amount Decimal @db.Decimal(12, 2)
+  /// Units obtained by the spend (e.g. copies printed) — drives note stock.
+  quantity  Int?
+  noteId    Int?    @map("note_id")
+  noteType  String? @map("note_type") @db.VarChar(80)
+  printType String? @map("print_type") @db.VarChar(80)
+
+  description  String?
+  expenseDate  DateTime @map("expense_date") @db.Date
+  recordedById Int?     @map("recorded_by")
+  createdAt    DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt    DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  expenseType ExpenseType @relation(fields: [expenseTypeId], references: [id], onDelete: Restrict)
+  note        Note?       @relation(fields: [noteId], references: [id], onDelete: SetNull)
+  recordedBy  User?       @relation(fields: [recordedById], references: [id], onDelete: SetNull)
+
+  @@index([expenseDate])
+  @@index([expenseTypeId])
+  @@map("expenses")
+}
+
+model NoteDistribution {
+  id            Int      @id @default(autoincrement())
+  noteId        Int      @map("note_id")
+  studentId     Int      @map("student_id")
+  distributedAt DateTime @default(now()) @map("distributed_at") @db.Timestamptz(3)
+  distributedById Int?   @map("distributed_by")
+
+  note          Note    @relation(fields: [noteId], references: [id], onDelete: Cascade)
+  student       Student @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  distributedBy User?   @relation(fields: [distributedById], references: [id], onDelete: SetNull)
+
+  @@unique([noteId, studentId])
+  @@map("note_distributions")
+}
+
+// ─── Exams ──────────────────────────────────────────────────────────────────
+
+model Exam {
+  id          Int     @id @default(autoincrement())
+  examName    String  @map("exam_name") @db.VarChar(160)
+  subjectName String? @map("subject_name") @db.VarChar(120)
+  paperNumber String? @map("paper_number") @db.VarChar(40)
+  chapter     String? @db.VarChar(200)
+  examType    String? @map("exam_type") @db.VarChar(80)
+  /// The legacy schema packed both marks into one "25,25" string.
+  mcqMarks    Int     @default(0) @map("mcq_marks")
+  cqMarks     Int     @default(0) @map("cq_marks")
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt   DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  examBatches ExamBatch[]
+  results     ExamResult[]
+
+  @@map("exams")
+}
+
+model ExamBatch {
+  id        Int              @id @default(autoincrement())
+  examId    Int              @map("exam_id")
+  batchId   Int              @map("batch_id")
+  examDate  DateTime         @map("exam_date") @db.Date
+  startTime String?          @map("start_time") @db.VarChar(8)
+  endTime   String?          @map("end_time") @db.VarChar(8)
+  status    ExamBatchStatus  @default(active)
+  createdAt DateTime         @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt DateTime         @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  exam  Exam  @relation(fields: [examId], references: [id], onDelete: Cascade)
+  batch Batch @relation(fields: [batchId], references: [id], onDelete: Cascade)
+
+  @@unique([examId, batchId])
+  @@map("exam_batches")
+}
+
+model ExamResult {
+  id        Int  @id @default(autoincrement())
+  examId    Int  @map("exam_id")
+  studentId Int  @map("student_id")
+  batchId   Int? @map("batch_id")
+
+  mcqMarks Int? @map("mcq_marks")
+  cqMarks  Int? @map("cq_marks")
+  /// Kept as a column so ranking queries stay a single index scan.
+  totalMarks Int              @default(0) @map("total_marks")
+  status     ExamResultStatus @default(published)
+
+  recordedById Int?     @map("recorded_by")
+  createdAt    DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt    DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  exam       Exam    @relation(fields: [examId], references: [id], onDelete: Cascade)
+  student    Student @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  batch      Batch?  @relation(fields: [batchId], references: [id], onDelete: SetNull)
+  recordedBy User?   @relation(fields: [recordedById], references: [id], onDelete: SetNull)
+
+  @@unique([examId, studentId])
+  @@index([examId, batchId, totalMarks])
+  @@map("exam_results")
+}
+
+// ─── Public site content ────────────────────────────────────────────────────
+
+model Announcement {
+  id          Int      @id @default(autoincrement())
+  content     String
+  isActive    Boolean  @default(false) @map("is_active")
+  createdById Int?     @map("created_by")
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt   DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  createdBy User? @relation(fields: [createdById], references: [id], onDelete: SetNull)
+
+  @@map("announcements")
+}
+
+/// Small key/value store for runtime toggles the UI can flip without a deploy.
+model AppSetting {
+  key         String   @id @db.VarChar(80)
+  value       Json
+  updatedById Int?     @map("updated_by")
+  updatedAt   DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  updatedBy User? @relation(fields: [updatedById], references: [id], onDelete: SetNull)
+
+  @@map("app_settings")
+}
+
+// ─── SMS pipeline (wired end to end; dispatch deliberately not implemented) ──
+
+model SmsTemplate {
+  id       Int         @id @default(autoincrement())
+  category SmsCategory @unique
+  isActive Boolean     @default(false) @map("is_active")
+
+  studentTemplate String  @map("student_template")
+  parentTemplate  String? @map("parent_template")
+  sendToStudent   Boolean @default(true) @map("send_to_student")
+  sendToParent    Boolean @default(false) @map("send_to_parent")
+  sendToTest      Boolean @default(false) @map("send_to_test")
+  testPhone       String? @map("test_phone") @db.VarChar(20)
+
+  updatedById Int?     @map("updated_by")
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt   DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  updatedBy User? @relation(fields: [updatedById], references: [id], onDelete: SetNull)
+
+  @@map("sms_templates")
+}
+
+/// Every message the app decides to send lands here first. Dispatch is a
+/// separate step, so turning SMS on later changes one module, not ten call sites.
+model SmsMessage {
+  id            Int          @id @default(autoincrement())
+  category      SmsCategory
+  recipientType SmsRecipient @map("recipient_type")
+  studentId     Int?         @map("student_id")
+  batchId       Int?         @map("batch_id")
+
+  phone  String    @db.VarChar(20)
+  body   String
+  status SmsStatus @default(pending)
+  /// Why a message was skipped or failed, e.g. "sms_disabled".
+  reason      String?
+  providerRef String? @map("provider_ref") @db.VarChar(120)
+  /// Snapshot of the placeholder values, so a log row can be re-rendered.
+  context Json?
+
+  requestedById Int?      @map("requested_by")
+  sentAt        DateTime? @map("sent_at") @db.Timestamptz(3)
+  createdAt     DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  student     Student? @relation(fields: [studentId], references: [id], onDelete: SetNull)
+  batch       Batch?   @relation(fields: [batchId], references: [id], onDelete: SetNull)
+  requestedBy User?    @relation(fields: [requestedById], references: [id], onDelete: SetNull)
+
+  @@index([status])
+  @@index([category])
+  @@index([createdAt])
+  @@index([studentId])
+  @@map("sms_messages")
+}
