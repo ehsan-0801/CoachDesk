@@ -58,6 +58,7 @@ export async function findStudentForPortal(query: string) {
         { studentUid: term },
         { phone: term },
         { parentPhone: term },
+        { name: { contains: term, mode: "insensitive" } },
       ],
     },
     select: { id: true },

@@ -450,6 +450,11 @@ export const en = {
     noResults: "No results published yet.",
     noPayments: "No payments recorded yet.",
     absentFromExam: "Absent",
+    topPerformersAll: "Top 10 Students (All Batches)",
+    topPerformersBatch: "Top 5 Students (Your Batch)",
+    rank: "Rank",
+    totalMarks: "Total Marks",
+    exams: "Exams",
   },
   errors: {
     notFound: "Page not found",

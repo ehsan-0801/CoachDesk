@@ -448,6 +448,11 @@ export const bn: Dictionary = {
     noResults: "এখনো কোনো ফলাফল প্রকাশিত হয়নি।",
     noPayments: "এখনো কোনো পেমেন্ট রেকর্ড হয়নি।",
     absentFromExam: "অনুপস্থিত",
+    topPerformersAll: "সেরা ১০ শিক্ষার্থী (সব ব্যাচ)",
+    topPerformersBatch: "সেরা ৫ শিক্ষার্থী (আপনার ব্যাচ)",
+    rank: "র‍্যাঙ্ক",
+    totalMarks: "মোট নম্বর",
+    exams: "পরীক্ষা",
   },
   errors: {
     notFound: "পৃষ্ঠা পাওয়া যায়নি",

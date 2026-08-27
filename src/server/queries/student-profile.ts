@@ -19,7 +19,7 @@ export async function getStudentProfile(id: number) {
   });
   if (!student) return null;
 
-  const [attendances, payments, results, examBatches, noteDistributions] = await Promise.all([
+  const [attendances, payments, results, examBatches, noteDistributions, topPerformersAllBatches, topPerformersBatch] = await Promise.all([
     db.attendance.findMany({
       where: { studentId: id },
       orderBy: { attendanceDate: "desc" },
@@ -60,6 +60,65 @@ export async function getStudentProfile(id: number) {
       orderBy: { distributedAt: "desc" },
       include: { note: { select: { id: true, name: true } } },
     }),
+    // Top 10 performers across all batches (by total marks across all exams)
+    db.student.findMany({
+      where: {
+        archived: false,
+        examResults: {
+          some: {
+            status: "published",
+          },
+        },
+      },
+      select: {
+        id: true,
+        name: true,
+        studentUid: true,
+        batch: {
+          select: {
+            name: true,
+            batchNumber: true,
+          },
+        },
+        examResults: {
+          where: {
+            status: "published",
+          },
+          select: {
+            totalMarks: true,
+          },
+        },
+      },
+      take: 100, // Get more to calculate totals properly
+    }),
+    // Top 5 performers in the student's batch (if they have one)
+    student.batchId
+      ? db.student.findMany({
+          where: {
+            batchId: student.batchId,
+            archived: false,
+            examResults: {
+              some: {
+                status: "published",
+              },
+            },
+          },
+          select: {
+            id: true,
+            name: true,
+            studentUid: true,
+            examResults: {
+              where: {
+                status: "published",
+              },
+              select: {
+                totalMarks: true,
+              },
+            },
+          },
+          take: 50, // Get more to calculate totals properly
+        })
+      : Promise.resolve([]),
   ]);
 
   // Month-by-month attendance summary, newest first.
@@ -125,6 +184,23 @@ export async function getStudentProfile(id: number) {
 
   const totalPresent = attendances.filter((a) => a.status === "present").length;
 
+  // Calculate top performers
+  const calculateTopPerformers = (students: typeof topPerformersAllBatches) => {
+    return students
+      .map((s) => ({
+        id: s.id,
+        name: s.name,
+        studentUid: s.studentUid,
+        batchName: s.batch?.name ?? (s.batch ? `Batch ${s.batch.batchNumber}` : null),
+        totalMarks: s.examResults.reduce((sum, r) => sum + r.totalMarks, 0),
+        examCount: s.examResults.length,
+      }))
+      .sort((a, b) => b.totalMarks - a.totalMarks);
+  };
+
+  const topAllBatches = calculateTopPerformers(topPerformersAllBatches).slice(0, 10);
+  const topBatch = student.batchId ? calculateTopPerformers(topPerformersBatch).slice(0, 5) : [];
+
   return {
     student: {
       ...student,
@@ -144,6 +220,8 @@ export async function getStudentProfile(id: number) {
     dues: dues.get(student.id) ?? null,
     examResults,
     noteDistributions,
+    topPerformersAllBatches: topAllBatches,
+    topPerformersBatch: topBatch,
   };
 }
 

@@ -21,6 +21,7 @@ import { getStudentProfile } from "@/server/queries/student-profile";
 import { findStudentForPortal } from "@/server/queries/public";
 
 import { PortalSearch } from "./portal-search";
+import { TopPerformersModals } from "./top-performers-modals";
 
 export const metadata = { title: "Student portal" };
 
@@ -138,50 +139,60 @@ export default async function PortalPage({ searchParams }: { searchParams: Searc
               {profile.examResults.length === 0 ? (
                 <EmptyState title={t.portal.noResults} />
               ) : (
-                <TableWrap>
-                  <Table>
-                    <THead>
-                      <TR>
-                        <TH>{t.exams.examName}</TH>
-                        <TH>{t.exams.examDate}</TH>
-                        <TH className="text-right">{t.exams.mcqMarks}</TH>
-                        <TH className="text-right">{t.exams.cqMarks}</TH>
-                        <TH className="text-right">{t.common.total}</TH>
-                      </TR>
-                    </THead>
-                    <TBody>
-                      {profile.examResults.map((result) => (
-                        <TR key={`${result.examId}-${String(result.absent)}`}>
-                          <TD>
-                            <span className="block font-medium">{result.examName}</span>
-                            <span className="block text-xs text-muted">{result.subjectName ?? "—"}</span>
-                          </TD>
-                          <TD className="whitespace-nowrap text-muted">
-                            {formatDateShort(result.examDate, locale)}
-                          </TD>
-                          {result.absent ? (
-                            <TD colSpan={3} className="text-right">
-                              <Badge variant="danger">{t.portal.absentFromExam}</Badge>
-                            </TD>
-                          ) : (
-                            <>
-                              <TD className="text-right tabular-nums">
-                                {formatNumber(result.mcqMarks ?? 0, locale)}
-                              </TD>
-                              <TD className="text-right tabular-nums">
-                                {formatNumber(result.cqMarks ?? 0, locale)}
-                              </TD>
-                              <TD className="text-right font-bold tabular-nums">
-                                {formatNumber(result.totalMarks ?? 0, locale)} /{" "}
-                                {formatNumber(result.examTotal, locale)}
-                              </TD>
-                            </>
-                          )}
+                <div className="space-y-4">
+                  {/* Top Performers Buttons */}
+                  <TopPerformersModals
+                    topPerformersAllBatches={profile.topPerformersAllBatches}
+                    topPerformersBatch={profile.topPerformersBatch}
+                    currentStudentId={profile.student.id}
+                    locale={locale}
+                  />
+
+                  <TableWrap>
+                    <Table>
+                      <THead>
+                        <TR>
+                          <TH>{t.exams.examName}</TH>
+                          <TH>{t.exams.examDate}</TH>
+                          <TH className="text-right">{t.exams.mcqMarks}</TH>
+                          <TH className="text-right">{t.exams.cqMarks}</TH>
+                          <TH className="text-right">{t.common.total}</TH>
                         </TR>
-                      ))}
-                    </TBody>
-                  </Table>
-                </TableWrap>
+                      </THead>
+                      <TBody>
+                        {profile.examResults.map((result) => (
+                          <TR key={`${result.examId}-${String(result.absent)}`}>
+                            <TD>
+                              <span className="block font-medium">{result.examName}</span>
+                              <span className="block text-xs text-muted">{result.subjectName ?? "—"}</span>
+                            </TD>
+                            <TD className="whitespace-nowrap text-muted">
+                              {formatDateShort(result.examDate, locale)}
+                            </TD>
+                            {result.absent ? (
+                              <TD colSpan={3} className="text-right">
+                                <Badge variant="danger">{t.portal.absentFromExam}</Badge>
+                              </TD>
+                            ) : (
+                              <>
+                                <TD className="text-right tabular-nums">
+                                  {formatNumber(result.mcqMarks ?? 0, locale)}
+                                </TD>
+                                <TD className="text-right tabular-nums">
+                                  {formatNumber(result.cqMarks ?? 0, locale)}
+                                </TD>
+                                <TD className="text-right font-bold tabular-nums">
+                                  {formatNumber(result.totalMarks ?? 0, locale)} /{" "}
+                                  {formatNumber(result.examTotal, locale)}
+                                </TD>
+                              </>
+                            )}
+                          </TR>
+                        ))}
+                      </TBody>
+                    </Table>
+                  </TableWrap>
+                </div>
               )}
             </TabsContent>
 
