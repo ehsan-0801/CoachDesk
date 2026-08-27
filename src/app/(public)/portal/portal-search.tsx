@@ -19,11 +19,11 @@ type SearchResult = {
 export function PortalSearch({ initial }: { initial: string }) {
   const { t } = useI18n();
   const router = useRouter();
-  const [value, setValue] = React.useState(initial);
+  const [value, setValue] = React.useState<string>(initial);
   const [results, setResults] = React.useState<SearchResult[]>([]);
-  const [loading, setLoading] = React.useState(false);
-  const [showDropdown, setShowDropdown] = React.useState(false);
-  const [selectedIndex, setSelectedIndex] = React.useState(-1);
+  const [loading, setLoading] = React.useState<boolean>(false);
+  const [showDropdown, setShowDropdown] = React.useState<boolean>(false);
+  const [selectedIndex, setSelectedIndex] = React.useState<number>(-1);
   const debounceRef = React.useRef<NodeJS.Timeout>();
   const wrapperRef = React.useRef<HTMLDivElement>(null);
 
