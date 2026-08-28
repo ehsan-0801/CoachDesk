@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 
 import { LocaleToggle } from "@/components/shell/locale-toggle";
+import { Logo } from "@/components/shell/logo";
 import { ThemeToggle } from "@/components/shell/theme-toggle";
 import { getI18n } from "@/lib/i18n/server";
 import { getCurrentUser } from "@/server/auth";
@@ -22,11 +23,11 @@ export default async function LoginPage() {
 
       <div className="w-full max-w-sm">
         <div className="mb-6 text-center">
-          <span className="mx-auto grid size-12 place-items-center rounded-[--radius-retro] border-2 border-line bg-primary text-xl font-bold text-primary-ink retro-shadow">
-            C
-          </span>
-          <h1 className="mt-4 text-2xl font-bold tracking-tight">{t.app.name}</h1>
-          <p className="mt-1 text-sm text-muted">{t.auth.signInSubtitle}</p>
+          <h1>
+            <Logo height={56} alt={t.app.name} eager className="mx-auto" />
+            <span className="sr-only">{t.app.name}</span>
+          </h1>
+          <p className="mt-3 text-sm text-muted">{t.auth.signInSubtitle}</p>
         </div>
 
         <div className="rounded-[--radius-retro] border-2 border-line bg-surface p-6 retro-shadow-lg">

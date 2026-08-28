@@ -7,6 +7,7 @@ import * as React from "react";
 
 import { useI18n } from "@/components/providers/i18n-provider";
 import { LocaleToggle } from "@/components/shell/locale-toggle";
+import { Logo } from "@/components/shell/logo";
 import { SidebarNav } from "@/components/shell/sidebar-nav";
 import { ThemeToggle } from "@/components/shell/theme-toggle";
 import { UserMenu } from "@/components/shell/user-menu";
@@ -22,11 +23,8 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   React.useEffect(() => setMobileOpen(false), [pathname]);
 
   const brand = (
-    <Link href="/dashboard" className="flex items-center gap-2 font-bold">
-      <span className="grid size-8 shrink-0 place-items-center rounded-[--radius-retro] border-2 border-line bg-primary text-primary-ink retro-shadow-sm">
-        C
-      </span>
-      <span className="truncate text-base tracking-tight">{t.app.name}</span>
+    <Link href="/dashboard" className="flex items-center">
+      <Logo height={32} alt={t.app.name} eager />
     </Link>
   );
 
