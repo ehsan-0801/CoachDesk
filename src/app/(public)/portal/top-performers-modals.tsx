@@ -79,12 +79,12 @@ export function TopPerformersModals({
           onClick={() => setShowAllModal(false)}
         >
           <div
-            className="relative max-h-[90vh] w-full max-w-4xl overflow-auto rounded-lg bg-white p-6 shadow-xl dark:bg-gray-900"
+            className="relative max-h-[90vh] w-full max-w-4xl overflow-auto rounded-[--radius-retro] border-2 border-line bg-surface p-6 retro-shadow-lg"
             onClick={(e) => e.stopPropagation()}
           >
             <button
               onClick={() => setShowAllModal(false)}
-              className="absolute right-4 top-4 rounded-full p-1 hover:bg-gray-100 dark:hover:bg-gray-800"
+              className="absolute right-4 top-4 rounded-full p-1 hover:bg-surface-2"
               aria-label="Close"
             >
               <X className="size-5" />
@@ -132,12 +132,12 @@ export function TopPerformersModals({
           onClick={() => setShowBatchModal(false)}
         >
           <div
-            className="relative max-h-[90vh] w-full max-w-3xl overflow-auto rounded-lg bg-white p-6 shadow-xl dark:bg-gray-900"
+            className="relative max-h-[90vh] w-full max-w-3xl overflow-auto rounded-[--radius-retro] border-2 border-line bg-surface p-6 retro-shadow-lg"
             onClick={(e) => e.stopPropagation()}
           >
             <button
               onClick={() => setShowBatchModal(false)}
-              className="absolute right-4 top-4 rounded-full p-1 hover:bg-gray-100 dark:hover:bg-gray-800"
+              className="absolute right-4 top-4 rounded-full p-1 hover:bg-surface-2"
               aria-label="Close"
             >
               <X className="size-5" />

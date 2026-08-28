@@ -1,5 +1,21 @@
 @import "tailwindcss";
 
+/* `dark:` must follow the same rule the tokens above follow: the data-theme
+   attribute next-themes sets, with the system preference as the pre-hydration
+   fallback. Tailwind's built-in dark variant is media-query-only, which
+   silently disagrees with the token system whenever the chosen theme and the
+   OS preference differ. */
+@custom-variant dark {
+  &:where(:root[data-theme="dark"], :root[data-theme="dark"] *) {
+    @slot;
+  }
+  @media (prefers-color-scheme: dark) {
+    &:where(:root:not([data-theme="light"]), :root:not([data-theme="light"]) *) {
+      @slot;
+    }
+  }
+}
+
 /* ═══════════════════════════════════════════════════════════════════════════
    CoachDesk — RetroUI
    A neo-brutalist system: hard 2px borders, offset shadows instead of blur,

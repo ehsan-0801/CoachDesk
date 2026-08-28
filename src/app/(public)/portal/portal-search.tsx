@@ -164,24 +164,22 @@ export function PortalSearch({ initial }: { initial: string }) {
 
           {/* Dropdown - positioned absolutely relative to input */}
           {showDropdown && results.length > 0 && (
-            <div className="absolute left-0 right-0 top-full z-50 mt-1 max-h-80 overflow-auto rounded-md border border-gray-200 bg-white shadow-lg dark:border-gray-700 dark:bg-gray-900">
+            <div className="absolute left-0 right-0 top-full z-50 mt-1 max-h-80 overflow-auto rounded-[--radius-retro] border-2 border-line bg-surface retro-shadow">
               {results.map((student, index) => (
                 <button
                   key={student.id}
                   type="button"
                   onClick={() => handleSelectStudent(student.studentUid || student.phone || student.name)}
-                  className={`block w-full border-b border-gray-100 px-4 py-3 text-left transition-colors last:border-0 dark:border-gray-800 ${
-                    index === selectedIndex
-                      ? "bg-blue-50 dark:bg-blue-950"
-                      : "hover:bg-gray-50 dark:hover:bg-gray-800"
+                  className={`block w-full border-b-2 border-line px-4 py-3 text-left transition-colors last:border-0 ${
+                    index === selectedIndex ? "bg-primary/20" : "hover:bg-surface-2"
                   }`}
                 >
                   <div className="flex items-baseline gap-2">
-                    <span className="font-semibold text-blue-600 dark:text-blue-400">
+                    <span className="font-semibold text-ink">
                       {student.studentUid || "—"}
                     </span>
-                    <span className="text-gray-400 dark:text-gray-500">—</span>
-                    <span className="font-medium text-gray-900 dark:text-gray-100">{student.name}</span>
+                    <span className="text-muted">—</span>
+                    <span className="font-medium text-ink">{student.name}</span>
                   </div>
                 </button>
               ))}
