@@ -1,10 +1,16 @@
 # CoachDesk
 
-Coaching-centre management — batches, students, attendance, exams, notes and
-finance — rebuilt as a single Next.js application on PostgreSQL.
+Coaching-centre management — batches, students, attendance, exams, notes,
+finance and SMS — rebuilt as a single Next.js application on PostgreSQL.
+
+Staff see only the modules their role grants; students look up their own
+results, attendance and dues through a public portal with no login. The whole
+interface is bilingual (Bangla / English) in a light and dark theme.
 
 This replaces the previous split of a Laravel API (`backend/`) and a separate
 Next.js client (`frontend/`) with one codebase, one deployment and one database.
+
+**Live:** <https://coachdesk-app.vercel.app>
 
 ---
 
@@ -69,7 +75,10 @@ src/app/
   (dashboard)/     /dashboard  /batches  /students  /attendance
                    /exams      /notes    /payments  /expenses
                    /colleges   /homepage /sms       /users  /profile
-  api/             /api/auth/logout, /api/students/search
+  api/             /api/auth/logout
+                   /api/students/search   typeahead for the admin forms
+                   /api/portal/search     typeahead for the student portal
+                   /api/export/[dataset]  CSV downloads (see Exporting)
 ```
 
 What a user can reach is decided by **RBAC**, not by which folder a page is in.
@@ -127,6 +136,27 @@ the data does not change meaning when the interface language does.
 
 ---
 
+## Theming
+
+Colour lives entirely in tokens on `:root` in `src/app/globals.css` — `ink`,
+`canvas`, `surface`, `muted`, plus the accent and semantic pairs. Components
+reference the tokens (`bg-surface`, `border-line`, `text-ink`) rather than
+Tailwind palette colours, which is what lets one variable swap recolour the
+whole app. The only palette colour left in `src` is the `bg-black/50` scrim on
+the portal's two modals; the app shell's own drawer uses `bg-ink/40`.
+
+The theme is chosen by `next-themes` writing `data-theme` on `<html>`, with the
+system preference as the pre-hydration fallback.
+
+> **If you write a `dark:` utility, read this first.** Tailwind v4's built-in
+> `dark:` variant compiles to a `prefers-color-scheme` media query, which does
+> *not* agree with `data-theme`: a user on a light-OS machine who picks dark
+> would get the base utility and never its `dark:` counterpart. `globals.css`
+> therefore redefines `dark:` with `@custom-variant` to follow `data-theme`.
+> Prefer the tokens over `dark:` regardless — the tokens already flip.
+
+---
+
 ## SMS pipeline
 
 **Delivery is off.** `SMS_ENABLED=false`, and the only registered provider is a
@@ -145,9 +175,54 @@ trigger (attendance / result / payment / admission / broadcast)
 
 Every message is recorded in `sms_messages` whichever way it goes, so the queue
 screen shows exactly what *would* have been sent, to which number, with the
-rendered body. Turning delivery on later means writing one adapter that satisfies
+rendered body.
+
+Three screens read that table: `/sms/queue` for the raw log, `/sms/report` for
+delivery statistics with a category breakdown, and `/sms/reports/payment` for
+the same report scoped to payment messages. The last two share one component,
+differing only in whether the category set is pinned. Their status counts track
+the active filters, so the totals always describe the rows on screen.
+
+Date filters on those reports bound a **UTC** day: `created_at` is a
+`Timestamptz` rather than a `@db.Date` like `payment_date`, and the app has no
+timezone setting to key the bounds to. If one is added, key them to it. Turning delivery on later means writing one adapter that satisfies
 `SmsProvider` and registering it in `src/server/sms/provider.ts` — no calling
 code changes.
+
+---
+
+## Exporting
+
+Every list screen with a filter bar has an **Export** button that downloads the
+table as CSV: students (all three lists), payments, today's collection,
+outstanding dues, expenses and the SMS log.
+
+The download is generated server-side by `/api/export/[dataset]`, which re-runs
+the page's own query with the page's own search params. Two consequences worth
+knowing:
+
+- the file covers the **whole filtered set**, not the page you were looking at —
+  `page` is deliberately dropped from the forwarded params;
+- permission is re-checked in the route, because the URL is reachable directly.
+
+Adding a dataset means adding one entry to the `DATASETS` table in that route.
+The `dataset()` helper ties a column list to its row type, so pairing the wrong
+columns with the wrong query is a compile error rather than a broken file.
+
+Three details in `src/lib/csv.ts` that look odd but are load-bearing:
+
+- **a UTF-8 BOM** is prepended, or Excel reads the file as the system codepage
+  and mangles every Bangla label;
+- **leading `=`, `+`, `-` and `@` are prefixed with an apostrophe** on strings,
+  so a crafted name cannot become a formula when the file is opened;
+- **numbers are exempt from that guard**, because prefixing a negative amount
+  would land it in Excel as text instead of a number.
+
+CSV rather than `.xlsx`: the previous app produced workbooks client-side with
+SheetJS, whose npm package carries known advisories and is no longer the
+publisher's distribution channel. CSV opens directly in Excel, carries the same
+data and needs no dependency. If true workbook output is ever required, do it
+server-side with a maintained library.
 
 ---
 
@@ -184,12 +259,20 @@ correct after a batch transfer.
   takes the following rank.
 - **Note stock is transactional**: printing (an expense) adds, distribution
   subtracts, and editing an expense rolls back the units it previously added.
+- **The public batch schedule reads by class time**, not by batch number: HSC
+  year descending, then earliest weekday, then start time, then the shorter
+  week, then name. The week starts **Saturday** — Friday is the weekend here, so
+  a `Date.getDay()` ordering would wrongly surface Friday batches first.
+- **The HSC year on a batch card is colour-coded by cohort** — graduated,
+  sitting this year, next, the year after — and an admin-chosen colour on the
+  batch overrides that default.
 
 ---
 
 ## Layout
 
 ```
+public/                  static assets (the logo)
 prisma/
   schema.prisma          the data model
   migrations/            generated SQL
@@ -204,6 +287,9 @@ src/
     i18n/                dictionaries, formatters, locale config
     rbac/                module list, permission helpers
     navigation.ts        the sidebar, tagged by module
+    csv.ts               CSV builder used by the export route
+    batch-order.ts       public schedule ordering
+    batch-display.ts     HSC cohort colour
   server/
     db.ts                Prisma client (pooled, dev-safe singleton)
     auth/                sessions, password hashing, guards
