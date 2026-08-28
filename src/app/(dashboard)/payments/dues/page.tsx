@@ -1,6 +1,7 @@
 import { TrendingDown } from "lucide-react";
 
 import { PageHeader } from "@/components/shell/page-header";
+import { ExportButton } from "@/components/ui/export-button";
 import { FilterSelect } from "@/components/ui/filter-select";
 import { SearchInput } from "@/components/ui/search-input";
 import { StatCard } from "@/components/ui/stat-card";
@@ -37,7 +38,11 @@ export default async function DuesPage({ searchParams }: { searchParams: SearchP
 
   return (
     <>
-      <PageHeader title={t.payments.dues} description={t.payments.title} />
+      <PageHeader
+        title={t.payments.dues}
+        description={t.payments.title}
+        actions={<ExportButton dataset="payments-dues" />}
+      />
 
       <div className="mb-4 grid gap-4 sm:grid-cols-2">
         <StatCard

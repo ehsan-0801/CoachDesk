@@ -3,6 +3,7 @@ import Link from "next/link";
 
 import { PageHeader } from "@/components/shell/page-header";
 import { Button } from "@/components/ui/button";
+import { ExportButton } from "@/components/ui/export-button";
 import { FilterSelect } from "@/components/ui/filter-select";
 import { Pagination } from "@/components/ui/pagination";
 import { SearchInput } from "@/components/ui/search-input";
@@ -50,13 +51,16 @@ export default async function StudentsPage({ searchParams }: { searchParams: Sea
         title={t.students.title}
         description={t.students.subtitle}
         actions={
-          can(user, "students", "create") ? (
-            <Button asChild>
-              <Link href="/students/admission">
-                <Plus /> {t.students.admission}
-              </Link>
-            </Button>
-          ) : null
+          <>
+            <ExportButton dataset="students" />
+            {can(user, "students", "create") ? (
+              <Button asChild>
+                <Link href="/students/admission">
+                  <Plus /> {t.students.admission}
+                </Link>
+              </Button>
+            ) : null}
+          </>
         }
       />
 

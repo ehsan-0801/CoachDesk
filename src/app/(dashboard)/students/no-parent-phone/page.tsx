@@ -1,6 +1,7 @@
 import { PhoneOff } from "lucide-react";
 
 import { PageHeader } from "@/components/shell/page-header";
+import { ExportButton } from "@/components/ui/export-button";
 import { FilterSelect } from "@/components/ui/filter-select";
 import { EmptyState } from "@/components/ui/misc";
 import { Pagination } from "@/components/ui/pagination";
@@ -44,6 +45,7 @@ export default async function NoParentPhonePage({ searchParams }: { searchParams
       <PageHeader
         title={t.students.noParentPhone}
         description="These students cannot receive guardian SMS until a number is added."
+        actions={<ExportButton dataset="students" extraParams={{ missingParentPhone: "1" }} />}
       />
 
       <div className="mb-4 flex flex-wrap items-center gap-2">

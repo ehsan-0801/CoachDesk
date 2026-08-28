@@ -4,6 +4,8 @@ import Link from "next/link";
 import { PageHeader } from "@/components/shell/page-header";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { DateRangeFilter } from "@/components/ui/date-range-filter";
+import { ExportButton } from "@/components/ui/export-button";
 import { FilterSelect } from "@/components/ui/filter-select";
 import { EmptyState } from "@/components/ui/misc";
 import { Pagination } from "@/components/ui/pagination";
@@ -16,7 +18,6 @@ import { isoDate, startOfMonth } from "@/lib/utils";
 import { requirePermission } from "@/server/auth";
 import { listExpenseTypes, listExpenses } from "@/server/queries/expenses";
 
-import { DateRangeFilter } from "../payments/date-range-filter";
 import { ExpenseRowActions } from "./expense-row-actions";
 
 export const metadata = { title: "Expenses" };
@@ -49,13 +50,16 @@ export default async function ExpensesPage({ searchParams }: { searchParams: Sea
         title={t.expenses.title}
         description={t.expenses.record}
         actions={
-          can(user, "expenses", "create") ? (
-            <Button asChild>
-              <Link href="/expenses/new">
-                <Plus /> {t.expenses.record}
-              </Link>
-            </Button>
-          ) : null
+          <>
+            <ExportButton dataset="expenses" />
+            {can(user, "expenses", "create") ? (
+              <Button asChild>
+                <Link href="/expenses/new">
+                  <Plus /> {t.expenses.record}
+                </Link>
+              </Button>
+            ) : null}
+          </>
         }
       />
 

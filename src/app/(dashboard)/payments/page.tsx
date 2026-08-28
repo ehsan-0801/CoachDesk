@@ -4,6 +4,8 @@ import Link from "next/link";
 import { PageHeader } from "@/components/shell/page-header";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { DateRangeFilter } from "@/components/ui/date-range-filter";
+import { ExportButton } from "@/components/ui/export-button";
 import { FilterSelect } from "@/components/ui/filter-select";
 import { EmptyState } from "@/components/ui/misc";
 import { Pagination } from "@/components/ui/pagination";
@@ -18,7 +20,6 @@ import { requirePermission } from "@/server/auth";
 import { listActiveBatches } from "@/server/queries/batches";
 import { listPaymentTypeOptions, listPayments } from "@/server/queries/payments";
 
-import { DateRangeFilter } from "./date-range-filter";
 import { PaymentRowActions } from "./payment-row-actions";
 
 export const metadata = { title: "Payments" };
@@ -55,13 +56,16 @@ export default async function PaymentsPage({ searchParams }: { searchParams: Sea
         title={t.payments.report}
         description={t.payments.title}
         actions={
-          can(user, "payments", "create") ? (
-            <Button asChild>
-              <Link href="/payments/new">
-                <Plus /> {t.payments.record}
-              </Link>
-            </Button>
-          ) : null
+          <>
+            <ExportButton dataset="payments" />
+            {can(user, "payments", "create") ? (
+              <Button asChild>
+                <Link href="/payments/new">
+                  <Plus /> {t.payments.record}
+                </Link>
+              </Button>
+            ) : null}
+          </>
         }
       />
 

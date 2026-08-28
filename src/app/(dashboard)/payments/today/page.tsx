@@ -4,6 +4,7 @@ import Link from "next/link";
 import { PageHeader } from "@/components/shell/page-header";
 import { Badge } from "@/components/ui/badge";
 import { EmptyState } from "@/components/ui/misc";
+import { ExportButton } from "@/components/ui/export-button";
 import { StatCard } from "@/components/ui/stat-card";
 import { TBody, TD, TFoot, TH, THead, TR, Table, TableWrap } from "@/components/ui/table";
 import { formatCurrency, formatDate, formatNumber } from "@/lib/i18n";
@@ -33,7 +34,12 @@ export default async function TodayCollectionPage({ searchParams }: { searchPara
       <PageHeader
         title={t.payments.todayCollection}
         description={formatDate(date, locale)}
-        actions={<DatePicker date={date} />}
+        actions={
+          <>
+            <DatePicker date={date} />
+            <ExportButton dataset="payments-today" />
+          </>
+        }
       />
 
       <div className="mb-4 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">

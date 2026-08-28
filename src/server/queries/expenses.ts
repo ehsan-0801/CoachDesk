@@ -15,8 +15,11 @@ export async function listExpenses(filters: {
   to?: string;
   expenseTypeId?: number;
   page?: number;
+  /** Overrides the page size — the CSV export asks for the whole filtered set. */
+  perPage?: number;
 } = {}) {
   const page = Math.max(1, filters.page ?? 1);
+  const perPage = filters.perPage ?? EXPENSES_PER_PAGE;
 
   const where: Prisma.ExpenseWhereInput = {
     ...(filters.from || filters.to
@@ -35,8 +38,8 @@ export async function listExpenses(filters: {
     db.expense.findMany({
       where,
       orderBy: [{ expenseDate: "desc" }, { id: "desc" }],
-      skip: (page - 1) * EXPENSES_PER_PAGE,
-      take: EXPENSES_PER_PAGE,
+      skip: (page - 1) * perPage,
+      take: perPage,
       include: {
         expenseType: true,
         note: { select: { id: true, name: true } },
@@ -55,7 +58,7 @@ export async function listExpenses(filters: {
   return {
     total,
     page,
-    pageCount: Math.max(1, Math.ceil(total / EXPENSES_PER_PAGE)),
+    pageCount: Math.max(1, Math.ceil(total / perPage)),
     expenses: rows.map((row) => ({ ...row, amount: Number(row.amount) })),
     byType: byType
       .map((row) => ({

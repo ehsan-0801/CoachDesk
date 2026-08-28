@@ -3,6 +3,7 @@ import { MessageSquare } from "lucide-react";
 import { PageHeader } from "@/components/shell/page-header";
 import { SmsDisabledBanner } from "@/components/shell/sms-disabled-banner";
 import { Badge } from "@/components/ui/badge";
+import { ExportButton } from "@/components/ui/export-button";
 import { FilterSelect } from "@/components/ui/filter-select";
 import { EmptyState } from "@/components/ui/misc";
 import { Pagination } from "@/components/ui/pagination";
@@ -46,7 +47,11 @@ export default async function SmsQueuePage({ searchParams }: { searchParams: Sea
 
   return (
     <>
-      <PageHeader title={t.sms.queue} description={t.sms.title} />
+      <PageHeader
+        title={t.sms.queue}
+        description={t.sms.title}
+        actions={<ExportButton dataset="sms" />}
+      />
       <SmsDisabledBanner />
 
       <div className="mb-4 grid gap-4 sm:grid-cols-2 xl:grid-cols-5">

@@ -147,6 +147,8 @@ export const NAVIGATION: NavGroup[] = [
     children: [
       { href: "/sms", label: (t) => t.nav.smsTemplates },
       { href: "/sms/queue", label: (t) => t.nav.smsQueue },
+      { href: "/sms/report", label: (t) => t.nav.smsReport },
+      { href: "/sms/reports/payment", label: (t) => t.nav.smsPaymentReport },
       { href: "/sms/broadcast", label: (t) => t.nav.smsBatchwise },
     ],
   },

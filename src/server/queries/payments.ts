@@ -24,11 +24,14 @@ export interface PaymentFilters {
   method?: string;
   search?: string;
   page?: number;
+  /** Overrides the page size — the CSV export asks for the whole filtered set. */
+  perPage?: number;
 }
 
 /** Ledger view: individual payment rows, filtered and paginated. */
 export async function listPayments(filters: PaymentFilters = {}) {
   const page = Math.max(1, filters.page ?? 1);
+  const perPage = filters.perPage ?? PAYMENTS_PER_PAGE;
 
   const where: Prisma.PaymentWhereInput = {
     ...(filters.from || filters.to
@@ -60,8 +63,8 @@ export async function listPayments(filters: PaymentFilters = {}) {
     db.payment.findMany({
       where,
       orderBy: [{ paymentDate: "desc" }, { id: "desc" }],
-      skip: (page - 1) * PAYMENTS_PER_PAGE,
-      take: PAYMENTS_PER_PAGE,
+      skip: (page - 1) * perPage,
+      take: perPage,
       include: {
         student: { select: { id: true, name: true, studentUid: true, isModelTest: true } },
         batch: { select: { id: true, name: true, batchNumber: true } },
@@ -73,7 +76,7 @@ export async function listPayments(filters: PaymentFilters = {}) {
   return {
     total,
     page,
-    pageCount: Math.max(1, Math.ceil(total / PAYMENTS_PER_PAGE)),
+    pageCount: Math.max(1, Math.ceil(total / perPage)),
     payments: rows.map((row) => ({ ...row, amount: Number(row.amount) })),
     byType: sums.map((row) => ({
       paymentType: row.paymentType,

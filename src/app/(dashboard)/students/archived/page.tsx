@@ -1,4 +1,5 @@
 import { PageHeader } from "@/components/shell/page-header";
+import { ExportButton } from "@/components/ui/export-button";
 import { FilterSelect } from "@/components/ui/filter-select";
 import { Pagination } from "@/components/ui/pagination";
 import { SearchInput } from "@/components/ui/search-input";
@@ -39,7 +40,11 @@ export default async function ArchivedStudentsPage({ searchParams }: { searchPar
 
   return (
     <>
-      <PageHeader title={t.nav.studentArchived} description={t.students.subtitle} />
+      <PageHeader
+        title={t.nav.studentArchived}
+        description={t.students.subtitle}
+        actions={<ExportButton dataset="students" extraParams={{ scope: "archived" }} />}
+      />
 
       <div className="mb-4 flex flex-wrap items-center gap-2">
         <SearchInput placeholder={t.students.searchPlaceholder} className="w-full sm:max-w-xs" />
