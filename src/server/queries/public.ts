@@ -1,5 +1,6 @@
 import "server-only";
 
+import { sortPublicBatches } from "@/lib/batch-order";
 import { db } from "@/server/db";
 
 /** Content the public homepage renders. No auth: it is the marketing page. */
@@ -16,6 +17,7 @@ export async function getPublicHomeData() {
       orderBy: [{ hscYear: "desc" }, { batchNumber: "asc" }],
       select: {
         id: true,
+        name: true,
         hscYear: true,
         daysInWeek: true,
         startTime: true,
@@ -36,7 +38,9 @@ export async function getPublicHomeData() {
 
   return {
     announcements,
-    batches,
+    // Weekday ordering needs the `days_in_week` array unpacked, which Postgres
+    // can't sort on directly, so the schedule order is applied here.
+    batches: sortPublicBatches(batches),
     stats: { students: stats[0], batches: stats[1], exams: stats[2] },
   };
 }

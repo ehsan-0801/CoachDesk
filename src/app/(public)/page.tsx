@@ -4,6 +4,7 @@ import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import { hscYearColor } from "@/lib/batch-display";
 import { formatNumber, formatTimeRange, formatWeekdayKeys } from "@/lib/i18n";
 import { getI18n } from "@/lib/i18n/server";
 import { getPublicHomeData } from "@/server/queries/public";
@@ -91,7 +92,7 @@ export default async function HomePage() {
                   <CardContent className="space-y-2 text-center">
                     <p
                       className="text-3xl font-bold tracking-tight"
-                      style={{ color: batch.hscYearColor ?? undefined }}
+                      style={{ color: hscYearColor(batch) }}
                     >
                       HSC {formatNumber(batch.hscYear, locale)}
                     </p>
