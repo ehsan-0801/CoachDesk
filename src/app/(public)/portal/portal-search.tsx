@@ -24,7 +24,7 @@ export function PortalSearch({ initial }: { initial: string }) {
   const [loading, setLoading] = React.useState<boolean>(false);
   const [showDropdown, setShowDropdown] = React.useState<boolean>(false);
   const [selectedIndex, setSelectedIndex] = React.useState<number>(-1);
-  const debounceRef = React.useRef<NodeJS.Timeout>();
+  const debounceRef = React.useRef<NodeJS.Timeout | undefined>(undefined);
   const wrapperRef = React.useRef<HTMLDivElement>(null);
 
   // Close dropdown when clicking outside
